@@ -1,0 +1,6 @@
+{
+  "name": "متجري",
+  "description": "تطبيق متجر إلكتروني متكامل لعرض المنتجات وإدارة المبيعات والطلبات",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

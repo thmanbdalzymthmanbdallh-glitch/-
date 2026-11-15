@@ -1,0 +1,432 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCurrency(currency) {
+      return currency is string && currency in ['SAR', 'EGP', 'AED', 'USD'];
+    }
+
+    function isValidCategory(category) {
+      return category is string && category in ['electronics', 'fashion', 'home', 'beauty', 'accessories', 'other'];
+    }
+
+    function isValidOrderStatus(status) {
+      return status is string && status in ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+    }
+
+    // --- VALIDATION HELPERS ---
+    function isValidShippingAddresses(addrs) {
+      return addrs is list &&
+             addrs.size() <= 8 &&
+             (addrs.size() < 1 || (addrs[0] is string && addrs[0].size() >= 4 && addrs[0].size() <= 250)) &&
+             (addrs.size() < 2 || (addrs[1] is string && addrs[1].size() >= 4 && addrs[1].size() <= 250)) &&
+             (addrs.size() < 3 || (addrs[2] is string && addrs[2].size() >= 4 && addrs[2].size() <= 250)) &&
+             (addrs.size() < 4 || (addrs[3] is string && addrs[3].size() >= 4 && addrs[3].size() <= 250)) &&
+             (addrs.size() < 5 || (addrs[4] is string && addrs[4].size() >= 4 && addrs[4].size() <= 250)) &&
+             (addrs.size() < 6 || (addrs[5] is string && addrs[5].size() >= 4 && addrs[5].size() <= 250)) &&
+             (addrs.size() < 7 || (addrs[6] is string && addrs[6].size() >= 4 && addrs[6].size() <= 250)) &&
+             (addrs.size() < 8 || (addrs[7] is string && addrs[7].size() >= 4 && addrs[7].size() <= 250));
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.storeName is string && data.storeName.size() >= 1 && data.storeName.size() <= 80 &&
+             (!('storeBio' in data) || (data.storeBio is string && data.storeBio.size() <= 300)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('defaultAddress' in data) || (data.defaultAddress is string && data.defaultAddress.size() <= 250)) &&
+             (!('shippingAddresses' in data) || isValidShippingAddresses(data.shippingAddresses)) &&
+             isValidCurrency(data.currency) &&
+             (!('fcmToken' in data) || (data.fcmToken is string && data.fcmToken.size() <= 512)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAdditionalImages(imgs) {
+      return imgs is list &&
+             imgs.size() <= 4 &&
+             (imgs.size() < 1 || (imgs[0] is string && imgs[0].size() <= 200000)) &&
+             (imgs.size() < 2 || (imgs[1] is string && imgs[1].size() <= 200000)) &&
+             (imgs.size() < 3 || (imgs[2] is string && imgs[2].size() <= 200000)) &&
+             (imgs.size() < 4 || (imgs[3] is string && imgs[3].size() <= 200000));
+    }
+
+    function isValidProduct(data) {
+      return data.sellerId is string && data.sellerId.size() >= 1 && data.sellerId.size() <= 128 &&
+             data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 80 &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 100 &&
+             data.description is string && data.description.size() <= 600 &&
+             isValidCategory(data.category) &&
+             data.price is number && data.price > 0 && data.price <= 1000000 &&
+             isValidCurrency(data.currency) &&
+             data.stock is int && data.stock >= 0 && data.stock <= 100000 &&
+             data.salesCount is int && data.salesCount >= 0 && data.salesCount <= 10000000 &&
+             data.isPublished is bool &&
+             data.imagePreset is string && data.imagePreset.size() >= 1 && data.imagePreset.size() <= 40 &&
+             (!('imageData' in data) || (data.imageData is string && data.imageData.size() <= 200000)) &&
+             (!('additionalImages' in data) || isValidAdditionalImages(data.additionalImages)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCartItem(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             isValidId(data.productId) &&
+             data.sellerId is string && data.sellerId.size() >= 1 && data.sellerId.size() <= 128 &&
+             data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 80 &&
+             data.productTitle is string && data.productTitle.size() >= 2 && data.productTitle.size() <= 100 &&
+             data.unitPrice is number && data.unitPrice > 0 && data.unitPrice <= 1000000 &&
+             isValidCurrency(data.currency) &&
+             data.quantity is int && data.quantity >= 1 && data.quantity <= 999 &&
+             data.imagePreset is string && data.imagePreset.size() >= 1 && data.imagePreset.size() <= 40 &&
+             (!('imageData' in data) || (data.imageData is string && data.imageData.size() <= 200000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOrder(data) {
+      return data.buyerId is string && data.buyerId.size() >= 1 && data.buyerId.size() <= 128 &&
+             data.sellerId is string && data.sellerId.size() >= 1 && data.sellerId.size() <= 128 &&
+             data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 80 &&
+             isValidId(data.productId) &&
+             data.productTitle is string && data.productTitle.size() >= 2 && data.productTitle.size() <= 100 &&
+             data.quantity is int && data.quantity >= 1 && data.quantity <= 999 &&
+             data.unitPrice is number && data.unitPrice > 0 && data.unitPrice <= 1000000 &&
+             (!('subtotalPrice' in data) || (data.subtotalPrice is number && data.subtotalPrice > 0 && data.subtotalPrice <= 100000000)) &&
+             (!('discountCode' in data) || (data.discountCode is string && data.discountCode.size() <= 32)) &&
+             (!('discountAmount' in data) || (data.discountAmount is number && data.discountAmount >= 0 && data.discountAmount <= 100000000)) &&
+             data.totalPrice is number && data.totalPrice >= 0 && data.totalPrice <= 100000000 &&
+             isValidCurrency(data.currency) &&
+             data.buyerName is string && data.buyerName.size() >= 2 && data.buyerName.size() <= 80 &&
+             data.buyerPhone is string && data.buyerPhone.size() >= 5 && data.buyerPhone.size() <= 30 &&
+             data.shippingAddress is string && data.shippingAddress.size() >= 4 && data.shippingAddress.size() <= 250 &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 250)) &&
+             isValidOrderStatus(data.status) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidDiscountType(t) {
+      return t is string && t in ['percentage', 'fixed'];
+    }
+
+    function isValidDiscount(data) {
+      return data.code is string && data.code.size() >= 3 && data.code.size() <= 32 &&
+             data.code.matches('^[A-Z0-9_\\-]+$') &&
+             data.creatorId is string && data.creatorId.size() >= 1 && data.creatorId.size() <= 128 &&
+             isValidDiscountType(data.type) &&
+             data.value is number && data.value > 0 &&
+             (data.type != 'percentage' || data.value <= 100) &&
+             (data.type != 'fixed' || data.value <= 1000000) &&
+             (!('minOrderAmount' in data) || (data.minOrderAmount is number && data.minOrderAmount >= 0 && data.minOrderAmount <= 1000000)) &&
+             (!('maxDiscountAmount' in data) || (data.maxDiscountAmount is number && data.maxDiscountAmount >= 0 && data.maxDiscountAmount <= 1000000)) &&
+             data.usageCount is int && data.usageCount >= 0 && data.usageCount <= 10000000 &&
+             (!('maxUses' in data) || (data.maxUses is int && data.maxUses >= 0 && data.maxUses <= 10000000)) &&
+             data.isActive is bool &&
+             (!('expiresAt' in data) || data.expiresAt == null || data.expiresAt is timestamp) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidWishlistItem(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             isValidId(data.productId) &&
+             data.sellerId is string && data.sellerId.size() >= 1 && data.sellerId.size() <= 128 &&
+             data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 80 &&
+             data.productTitle is string && data.productTitle.size() >= 2 && data.productTitle.size() <= 100 &&
+             isValidCategory(data.category) &&
+             data.price is number && data.price > 0 && data.price <= 1000000 &&
+             isValidCurrency(data.currency) &&
+             data.imagePreset is string && data.imagePreset.size() >= 1 && data.imagePreset.size() <= 40 &&
+             (!('imageData' in data) || (data.imageData is string && data.imageData.size() <= 200000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidProductReview(data) {
+      return isValidId(data.productId) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.reviewerName is string && data.reviewerName.size() >= 1 && data.reviewerName.size() <= 80 &&
+             data.rating is int && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() >= 1 && data.comment.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidPriceHistoryEntry(data) {
+      return isValidId(data.productId) &&
+             data.sellerId is string && data.sellerId.size() >= 1 && data.sellerId.size() <= 128 &&
+             data.price is number && data.price > 0 && data.price <= 1000000 &&
+             isValidCurrency(data.currency) &&
+             data.recordedAt is timestamp && data.recordedAt <= request.time;
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. User Profiles (Owner-only PII isolation)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'storeName', 'currency', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'storeName', 'storeBio', 'phone', 'defaultAddress', 'shippingAddresses', 'currency', 'fcmToken', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'storeName', 'storeBio', 'phone', 'defaultAddress', 'shippingAddresses', 'currency', 'fcmToken', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      // User Cart Subcollection
+      match /cart/{cartItemId} {
+        allow get: if isSignedIn() && isValidId(cartItemId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(cartItemId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'productId', 'sellerId', 'sellerName', 'productTitle', 'unitPrice', 'currency', 'quantity', 'imagePreset', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'productId', 'sellerId', 'sellerName', 'productTitle', 'unitPrice', 'currency', 'quantity', 'imagePreset', 'imageData', 'createdAt', 'updatedAt']) &&
+                         isValidCartItem(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(cartItemId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().productId == existing().productId &&
+                         incoming().sellerId == existing().sellerId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidCartItem(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'unitPrice', 'productTitle', 'sellerName', 'imagePreset', 'imageData', 'updatedAt']);
+
+        allow delete: if isSignedIn() && isValidId(cartItemId) && request.auth.uid == userId;
+      }
+    }
+
+    // 2. Marketplace Products
+    match /products/{productId} {
+      allow get: if isSignedIn() && isValidId(productId) && (existing().sellerId == request.auth.uid || existing().isPublished == true);
+      allow list: if isSignedIn() && (resource.data.sellerId == request.auth.uid || resource.data.isPublished == true);
+
+      allow create: if isSignedIn() &&
+                       isValidId(productId) &&
+                       incoming().sellerId == request.auth.uid &&
+                       incoming().salesCount == 0 &&
+                       incoming().keys().hasAll(['sellerId', 'sellerName', 'title', 'description', 'category', 'price', 'currency', 'stock', 'salesCount', 'isPublished', 'imagePreset', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['sellerId', 'sellerName', 'title', 'description', 'category', 'price', 'currency', 'stock', 'salesCount', 'isPublished', 'imagePreset', 'imageData', 'additionalImages', 'createdAt', 'updatedAt']) &&
+                       isValidProduct(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(productId) &&
+                       isValidProduct(incoming()) &&
+                       incoming().sellerId == existing().sellerId &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Seller edits product details or stock
+                         (
+                           existing().sellerId == request.auth.uid &&
+                           incoming().salesCount == existing().salesCount &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['sellerName', 'title', 'description', 'category', 'price', 'currency', 'stock', 'isPublished', 'imagePreset', 'imageData', 'additionalImages', 'updatedAt'])
+                         ) ||
+                         // Action 2: Buyer decrements stock and increments salesCount when placing an order
+                         (
+                           existing().isPublished == true &&
+                           incoming().stock < existing().stock &&
+                           incoming().salesCount > existing().salesCount &&
+                           (existing().stock - incoming().stock) == (incoming().salesCount - existing().salesCount) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'salesCount', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if isSignedIn() && isValidId(productId) && existing().sellerId == request.auth.uid;
+
+      // Product Reviews Subcollection (1 review per user ID)
+      match /reviews/{reviewId} {
+        allow get, list: if isSignedIn() && isValidId(productId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(productId) &&
+                         isValidId(reviewId) &&
+                         reviewId == request.auth.uid &&
+                         incoming().productId == productId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['productId', 'userId', 'reviewerName', 'rating', 'comment', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['productId', 'userId', 'reviewerName', 'rating', 'comment', 'createdAt', 'updatedAt']) &&
+                         isValidProductReview(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(productId) &&
+                         isValidId(reviewId) &&
+                         reviewId == request.auth.uid &&
+                         existing().userId == request.auth.uid &&
+                         incoming().productId == existing().productId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['reviewerName', 'rating', 'comment', 'updatedAt']) &&
+                         isValidProductReview(incoming());
+
+        allow delete: if isSignedIn() && isValidId(productId) && isValidId(reviewId) && existing().userId == request.auth.uid;
+      }
+
+      // Product Price History Subcollection (immutable seller-authored ledger)
+      match /priceHistory/{entryId} {
+        allow get, list: if isSignedIn() && isValidId(productId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(productId) &&
+                         isValidId(entryId) &&
+                         incoming().productId == productId &&
+                         incoming().sellerId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/products/$(productId)) &&
+                         get(/databases/$(database)/documents/products/$(productId)).data.sellerId == request.auth.uid &&
+                         incoming().keys().hasAll(['productId', 'sellerId', 'price', 'currency', 'recordedAt']) &&
+                         incoming().keys().hasOnly(['productId', 'sellerId', 'price', 'currency', 'recordedAt']) &&
+                         isValidPriceHistoryEntry(incoming());
+
+        allow update, delete: if false;
+      }
+    }
+
+    // 3. Orders
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) && (existing().buyerId == request.auth.uid || existing().sellerId == request.auth.uid);
+      allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(orderId) &&
+                       isValidOrder(incoming()) &&
+                       incoming().buyerId == request.auth.uid &&
+                       incoming().status == 'pending' &&
+                       incoming().keys().hasAll(['buyerId', 'sellerId', 'sellerName', 'productId', 'productTitle', 'quantity', 'unitPrice', 'totalPrice', 'currency', 'buyerName', 'buyerPhone', 'shippingAddress', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['buyerId', 'sellerId', 'sellerName', 'productId', 'productTitle', 'quantity', 'unitPrice', 'subtotalPrice', 'discountCode', 'discountAmount', 'totalPrice', 'currency', 'buyerName', 'buyerPhone', 'shippingAddress', 'note', 'status', 'createdAt', 'updatedAt']) &&
+                       exists(/databases/$(database)/documents/products/$(incoming().productId)) &&
+                       get(/databases/$(database)/documents/products/$(incoming().productId)).data.sellerId == incoming().sellerId &&
+                       get(/databases/$(database)/documents/products/$(incoming().productId)).data.isPublished == true;
+
+      allow update: if isSignedIn() &&
+                       isValidId(orderId) &&
+                       isValidOrder(incoming()) &&
+                       incoming().buyerId == existing().buyerId &&
+                       incoming().sellerId == existing().sellerId &&
+                       incoming().productId == existing().productId &&
+                       incoming().createdAt == existing().createdAt &&
+                       !(existing().status in ['delivered', 'cancelled']) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && (
+                         // Action 1: Seller advances fulfillment status
+                         (
+                           existing().sellerId == request.auth.uid &&
+                           (
+                             (existing().status == 'pending' && incoming().status in ['confirmed', 'shipped', 'delivered', 'cancelled']) ||
+                             (existing().status == 'confirmed' && incoming().status in ['shipped', 'delivered', 'cancelled']) ||
+                             (existing().status == 'shipped' && incoming().status in ['delivered', 'cancelled'])
+                           )
+                         ) ||
+                         // Action 2: Buyer cancels a pending order
+                         (
+                           existing().buyerId == request.auth.uid &&
+                           existing().status == 'pending' &&
+                           incoming().status == 'cancelled'
+                         )
+                       );
+
+      allow delete: if false;
+    }
+
+    // 4. Promotional Discounts
+    match /discounts/{discountId} {
+      allow get: if isSignedIn() && isValidId(discountId);
+      allow list: if isSignedIn() && (resource.data.creatorId == request.auth.uid || resource.data.isActive == true);
+
+      allow create: if isSignedIn() &&
+                       isValidId(discountId) &&
+                       discountId == incoming().code &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().usageCount == 0 &&
+                       incoming().keys().hasAll(['code', 'creatorId', 'type', 'value', 'usageCount', 'isActive', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['code', 'creatorId', 'type', 'value', 'minOrderAmount', 'maxDiscountAmount', 'usageCount', 'maxUses', 'isActive', 'expiresAt', 'createdAt', 'updatedAt']) &&
+                       isValidDiscount(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(discountId) &&
+                       isValidDiscount(incoming()) &&
+                       incoming().code == existing().code &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Creator manages discount settings
+                         (
+                           existing().creatorId == request.auth.uid &&
+                           incoming().usageCount == existing().usageCount &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['type', 'value', 'minOrderAmount', 'maxDiscountAmount', 'maxUses', 'isActive', 'expiresAt', 'updatedAt'])
+                         ) ||
+                         // Action 2: Buyer increments usageCount upon checkout redemption
+                         (
+                           existing().isActive == true &&
+                           (!('maxUses' in existing()) || existing().maxUses == 0 || existing().usageCount < existing().maxUses) &&
+                           (!('expiresAt' in existing()) || existing().expiresAt == null || existing().expiresAt > request.time) &&
+                           incoming().usageCount == existing().usageCount + 1 &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['usageCount', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if isSignedIn() && isValidId(discountId) && existing().creatorId == request.auth.uid;
+    }
+
+    // 5. User Wishlists (Owner-only collection scoped by userId)
+    match /wishlist/{wishlistId} {
+      allow get: if isSignedIn() && isValidId(wishlistId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(wishlistId) &&
+                       wishlistId == (request.auth.uid + '_' + incoming().productId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'productId', 'sellerId', 'sellerName', 'productTitle', 'category', 'price', 'currency', 'imagePreset', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'productId', 'sellerId', 'sellerName', 'productTitle', 'category', 'price', 'currency', 'imagePreset', 'imageData', 'createdAt', 'updatedAt']) &&
+                       isValidWishlistItem(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(wishlistId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().productId == existing().productId &&
+                       incoming().sellerId == existing().sellerId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidWishlistItem(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['sellerName', 'productTitle', 'category', 'price', 'currency', 'imagePreset', 'imageData', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(wishlistId) && existing().userId == request.auth.uid;
+    }
+  }
+}

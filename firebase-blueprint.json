@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user and merchant profile settings including store name and saved delivery details.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the user." },
+        "displayName": { "type": "string", "description": "User display name." },
+        "storeName": { "type": "string", "description": "Public storefront name used on listings." },
+        "storeBio": { "type": "string", "description": "Short description of the seller's store." },
+        "phone": { "type": "string", "description": "Private phone number for order checkout." },
+        "defaultAddress": { "type": "string", "description": "Private default shipping address." },
+        "shippingAddresses": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of customer saved shipping addresses."
+        },
+        "currency": { "type": "string", "enum": ["SAR", "EGP", "AED", "USD"], "description": "Preferred currency code." },
+        "fcmToken": { "type": "string", "description": "Firebase Cloud Messaging device registration token." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp when updated." }
+      },
+      "required": ["userId", "displayName", "storeName", "currency", "createdAt", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A product listing published on the marketplace by a seller.",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string", "description": "UID of the seller who owns this product." },
+        "sellerName": { "type": "string", "description": "Storefront display name of the seller." },
+        "title": { "type": "string", "description": "Product title." },
+        "description": { "type": "string", "description": "Product description." },
+        "category": { "type": "string", "enum": ["electronics", "fashion", "home", "beauty", "accessories", "other"], "description": "Product category key." },
+        "price": { "type": "number", "description": "Unit price." },
+        "currency": { "type": "string", "enum": ["SAR", "EGP", "AED", "USD"], "description": "Currency code." },
+        "stock": { "type": "integer", "description": "Available stock quantity." },
+        "salesCount": { "type": "integer", "description": "Total units sold." },
+        "isPublished": { "type": "boolean", "description": "Whether product is visible in marketplace." },
+        "imagePreset": { "type": "string", "description": "Curated visual preset key." },
+        "imageData": { "type": "string", "description": "Optional compressed JPEG base64 thumbnail." },
+        "additionalImages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional list of additional compressed JPEG base64 gallery images."
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp when updated." }
+      },
+      "required": ["sellerId", "sellerName", "title", "description", "category", "price", "currency", "stock", "salesCount", "isPublished", "imagePreset", "createdAt", "updatedAt"]
+    },
+    "CartItem": {
+      "title": "CartItem",
+      "description": "A product item saved in the user's shopping cart.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the cart owner." },
+        "productId": { "type": "string", "description": "Referenced product ID." },
+        "sellerId": { "type": "string", "description": "UID of the product seller." },
+        "sellerName": { "type": "string", "description": "Store name of the seller." },
+        "productTitle": { "type": "string", "description": "Product title snapshot." },
+        "unitPrice": { "type": "number", "description": "Unit price snapshot." },
+        "currency": { "type": "string", "enum": ["SAR", "EGP", "AED", "USD"], "description": "Currency code." },
+        "quantity": { "type": "integer", "description": "Requested quantity." },
+        "imagePreset": { "type": "string", "description": "Visual preset key." },
+        "imageData": { "type": "string", "description": "Optional compressed thumbnail." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["userId", "productId", "sellerId", "sellerName", "productTitle", "unitPrice", "currency", "quantity", "imagePreset", "createdAt", "updatedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A purchase order placed by a buyer for a seller's product.",
+      "type": "object",
+      "properties": {
+        "buyerId": { "type": "string", "description": "UID of the buyer." },
+        "sellerId": { "type": "string", "description": "UID of the seller." },
+        "sellerName": { "type": "string", "description": "Store name of the seller." },
+        "productId": { "type": "string", "description": "ID of the ordered product." },
+        "productTitle": { "type": "string", "description": "Title of the ordered product." },
+        "quantity": { "type": "integer", "description": "Units ordered." },
+        "unitPrice": { "type": "number", "description": "Price per unit at order time." },
+        "subtotalPrice": { "type": "number", "description": "Subtotal before any discount code." },
+        "discountCode": { "type": "string", "description": "Applied discount code if any." },
+        "discountAmount": { "type": "number", "description": "Discount deduction applied to this order." },
+        "totalPrice": { "type": "number", "description": "Total order amount after discount." },
+        "currency": { "type": "string", "enum": ["SAR", "EGP", "AED", "USD"], "description": "Currency code." },
+        "buyerName": { "type": "string", "description": "Recipient full name." },
+        "buyerPhone": { "type": "string", "description": "Recipient phone number." },
+        "shippingAddress": { "type": "string", "description": "Delivery address." },
+        "note": { "type": "string", "description": "Optional order note." },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"], "description": "Order fulfillment status." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["buyerId", "sellerId", "sellerName", "productId", "productTitle", "quantity", "unitPrice", "totalPrice", "currency", "buyerName", "buyerPhone", "shippingAddress", "status", "createdAt", "updatedAt"]
+    },
+    "ProductReview": {
+      "title": "ProductReview",
+      "description": "A customer star rating and text review for a marketplace product.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "description": "Referenced product ID." },
+        "userId": { "type": "string", "description": "UID of the reviewer." },
+        "reviewerName": { "type": "string", "description": "Display name of the reviewer." },
+        "rating": { "type": "integer", "description": "Star rating from 1 to 5." },
+        "comment": { "type": "string", "description": "Text review comment." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["productId", "userId", "reviewerName", "rating", "comment", "createdAt", "updatedAt"]
+    },
+    "Discount": {
+      "title": "Discount",
+      "description": "Promotional discount code supporting percentage or fixed-amount deductions.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Uppercase promo code string matching the document ID." },
+        "creatorId": { "type": "string", "description": "UID of the merchant who created this promo code." },
+        "type": { "type": "string", "enum": ["percentage", "fixed"], "description": "Discount calculation type." },
+        "value": { "type": "number", "description": "Percentage (1-100) or fixed currency deduction." },
+        "minOrderAmount": { "type": "number", "description": "Minimum subtotal required to apply this code." },
+        "maxDiscountAmount": { "type": "number", "description": "Optional cap for percentage discounts." },
+        "usageCount": { "type": "integer", "description": "Number of times this code has been redeemed." },
+        "maxUses": { "type": "integer", "description": "Maximum allowed redemptions (0 = unlimited)." },
+        "isActive": { "type": "boolean", "description": "Whether the discount code is currently active." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Optional expiration timestamp." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["code", "creatorId", "type", "value", "usageCount", "isActive", "createdAt", "updatedAt"]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "A saved favorite product in a user's personalized wishlist.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who saved the product." },
+        "productId": { "type": "string", "description": "Referenced product ID." },
+        "sellerId": { "type": "string", "description": "UID of the product seller." },
+        "sellerName": { "type": "string", "description": "Store name snapshot." },
+        "productTitle": { "type": "string", "description": "Product title snapshot." },
+        "category": { "type": "string", "enum": ["electronics", "fashion", "home", "beauty", "accessories", "other"], "description": "Product category key." },
+        "price": { "type": "number", "description": "Product price snapshot." },
+        "currency": { "type": "string", "enum": ["SAR", "EGP", "AED", "USD"], "description": "Currency code." },
+        "imagePreset": { "type": "string", "description": "Visual preset key." },
+        "imageData": { "type": "string", "description": "Optional compressed product thumbnail." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["userId", "productId", "sellerId", "sellerName", "productTitle", "category", "price", "currency", "imagePreset", "createdAt", "updatedAt"]
+    },
+    "PriceHistoryEntry": {
+      "title": "PriceHistoryEntry",
+      "description": "Historical price point recorded whenever a seller sets or updates a product's price.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "description": "Referenced product ID." },
+        "sellerId": { "type": "string", "description": "UID of the seller who owns the product." },
+        "price": { "type": "number", "description": "Recorded product unit price." },
+        "currency": { "type": "string", "enum": ["SAR", "EGP", "AED", "USD"], "description": "Currency code." },
+        "recordedAt": { "type": "string", "format": "date-time", "description": "Server timestamp when the price took effect." }
+      },
+      "required": ["productId", "sellerId", "price", "currency", "recordedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user & merchant profile documents isolated per user."
+    },
+    "/users/{userId}/cart/{cartItemId}": {
+      "schema": { "$ref": "#/entities/CartItem" },
+      "description": "User's persistent shopping cart items."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Marketplace product listings owned by sellers."
+    },
+    "/products/{productId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/ProductReview" },
+      "description": "Star ratings and text reviews for each product."
+    },
+    "/products/{productId}/priceHistory/{entryId}": {
+      "schema": { "$ref": "#/entities/PriceHistoryEntry" },
+      "description": "Immutable price change history snapshots for product price trend visualization."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders linking buyers and sellers."
+    },
+    "/discounts/{discountId}": {
+      "schema": { "$ref": "#/entities/Discount" },
+      "description": "Promotional discount codes validated during checkout."
+    },
+    "/wishlist/{wishlistId}": {
+      "schema": { "$ref": "#/entities/WishlistItem" },
+      "description": "User-scoped saved wishlist items referencing marketplace products."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">متجري</string>
+    <string name="auth_title">افتح متجرك وابدأ البيع الآن</string>
+    <string name="auth_subtitle">اعرض منتجاتك، أدر مخزونك، وتابع طلبات عملائك لحظة بلحظة في مكان واحد.</string>
+    <string name="sign_in_google">تسجيل الدخول بحساب Google</string>
+    <string name="nav_marketplace">السوق</string>
+    <string name="nav_seller">متجري</string>
+    <string name="nav_orders">الطلبات</string>
+    <string name="nav_cart">السلة</string>
+    <string name="nav_profile">الحساب</string>
+    <string name="default_notification_channel_id" translatable="false">order_updates_channel</string>
+    <string name="default_notification_channel_name">تحديثات الطلبات</string>
+</resources>
